@@ -10,7 +10,6 @@ A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) plug
 | --- | --- | --- |
 | AI is thinking | DeepSeek-blue pulsing dot + `AI 正在思考…` + elapsed time | none |
 | AI requests permission | Amber pulsing dot + `AI 请求权限` + session/tool name | system Exclamation |
-| AI has a question / plan review | Amber pulsing dot + matching text | system Exclamation |
 | AI finished thinking | Green dot + `AI 已完成思考`, auto-hides after 12 s | system Asterisk |
 | Idle | Hidden | none |
 
