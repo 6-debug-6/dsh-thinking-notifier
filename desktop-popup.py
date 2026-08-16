@@ -6,6 +6,7 @@ on macOS / Linux / Windows when PowerShell+WPF is not used.
 """
 import json
 import sys
+import time
 import urllib.request
 
 try:
@@ -60,12 +61,16 @@ close_button.grid(row=0, column=2, sticky='ne')
 
 state = {
     'last_mode': '',
+    'last_session': '',
     'fail_count': 0,
     'tick': 0,
     'last_status': None,
     'dismissed': False,
     'dismissed_mode': '',
     'dismissed_session': '',
+    'expanded': False,
+    'expanded_at': 0.0,
+    'auto_collapse_ms': 5000,
 }
 
 
@@ -82,10 +87,25 @@ def show_card():
     x = root.winfo_screenwidth() - w - 16
     y = max(16, root.winfo_screenheight() - h - 48)
     root.geometry(f'{w}x{h}+{x}+{y}')
+    state['expanded'] = True
+    state['expanded_at'] = time.time()
+
+
+def collapse_card():
+    root.deiconify()
+    root.lift()
+    root.attributes('-topmost', True)
+    w = 372
+    h = 84
+    x = root.winfo_screenwidth() - 18
+    y = max(16, root.winfo_screenheight() - h - 48)
+    root.geometry(f'{w}x{h}+{x}+{y}')
+    state['expanded'] = False
 
 
 def hide_card():
     root.withdraw()
+    state['expanded'] = False
 
 
 def dismiss_card():
@@ -105,10 +125,25 @@ def render(status):
     mode = status.get('mode') or 'idle'
     session = status.get('sessionText') or ''
 
-    # Idle resets the dismissal so the next turn/request always shows again.
+    should_expand = False
+    if mode != state['last_mode'] or session != state['last_session']:
+        if mode != 'idle':
+            state['dismissed'] = False
+            should_expand = True
+        if mode == 'pending':
+            try:
+                root.bell()
+            except Exception:
+                pass
+        elif mode == 'done':
+            try:
+                root.bell()
+            except Exception:
+                pass
+        state['last_mode'] = mode
+        state['last_session'] = session
+
     if mode == 'idle':
-        state['dismissed'] = False
-    elif state['dismissed'] and (mode != state['dismissed_mode'] or session != state['dismissed_session']):
         state['dismissed'] = False
 
     set_dot_color(COLORS.get(mode, COLORS['idle']))
@@ -116,14 +151,6 @@ def render(status):
         card.config(highlightbackground=COLORS['pending'])
     else:
         card.config(highlightbackground=BORDER)
-
-    if mode != state['last_mode']:
-        if mode in ('pending', 'done'):
-            try:
-                root.bell()
-            except Exception:
-                pass
-        state['last_mode'] = mode
 
     if mode in ('running', 'pending'):
         state['tick'] += 1
@@ -135,8 +162,11 @@ def render(status):
 
     if mode == 'idle' or state['dismissed']:
         hide_card()
-    else:
+    elif mode in ('pending', 'done'):
         show_card()
+    elif mode == 'running':
+        if should_expand or root.state() != 'normal':
+            show_card()
 
 
 def poll():
@@ -150,10 +180,33 @@ def poll():
         if state['fail_count'] >= 15:
             root.destroy()
             return
+
+    # Auto-collapse only while the AI is thinking.
+    if (
+        state['expanded']
+        and state['last_status']
+        and state['last_status'].get('mode') == 'running'
+        and not state['dismissed']
+        and (time.time() - state['expanded_at']) * 1000 >= state['auto_collapse_ms']
+    ):
+        collapse_card()
+
     root.after(1000, poll)
 
 
+def on_enter(_event):
+    if (
+        not state['expanded']
+        and not state['dismissed']
+        and state['last_status']
+        and state['last_status'].get('mode') != 'idle'
+    ):
+        show_card()
+
+
 close_button.bind('<Button-1>', lambda _e: dismiss_card())
+card.bind('<Enter>', on_enter)
+root.bind('<Enter>', on_enter)
 
 root.withdraw()
 root.after(0, poll)

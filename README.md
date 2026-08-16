@@ -8,13 +8,15 @@ A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) plug
 
 | State | Popup | Sound |
 | --- | --- | --- |
-| AI is thinking | DeepSeek-blue pulsing dot + `AI 正在思考…` + elapsed time | none |
+| AI is thinking | DeepSeek-blue pulsing dot + `AI 正在思考…` + elapsed time. Auto-collapses to a slim right-edge tab after 5 s; hover or click the tab to expand it again | none |
 | AI requests permission | Amber pulsing dot + `AI 请求权限` + session/tool name | system Exclamation |
 | AI finished thinking | Green dot + `AI 已完成思考`, auto-hides after 12 s | system Asterisk |
 | Idle | Hidden | none |
 
 - DeepSeek-style dark card (`#1E2235` / `#4D6BFE`).
 - Always-on-top frameless window, bottom-right, visible over any application.
+- Auto-collapses into a slim right-edge tab after 5 s while the AI is thinking, so it stays visible without blocking desktop controls.
+- Hover or click the edge tab to expand it manually; new turns, permission requests, and completions expand it automatically.
 - Click the **X** button to dismiss the current popup; the next new turn, permission request, or completion will show it again.
 - Multiple sessions are summarized automatically.
 - The popup process stays alive while DSH runs; it exits ~15 s after the status endpoint becomes unreachable.
@@ -36,6 +38,7 @@ Desktop popup
   ├─ polls /status every second
   ├─ renders the DeepSeek-style card (running/pending/done/idle)
   ├─ plays a system sound on pending/done transitions
+  ├─ auto-collapses to the right edge while running; expands on new states
   └─ hides while idle, keeps running in the background
 ```
 

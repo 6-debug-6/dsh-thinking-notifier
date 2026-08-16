@@ -6,6 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+# Hide the PowerShell console window; only the WPF popup should be visible.
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
@@ -75,12 +76,16 @@ $timeText = $window.FindName('TimeText')
 $closeButton = $window.FindName('CloseButton')
 
 $script:lastMode = ''
+$script:lastSession = ''
 $script:failCount = 0
 $script:tick = 0
 $script:lastStatus = $null
 $script:dismissed = $false
 $script:dismissedMode = ''
 $script:dismissedSessionText = ''
+$script:expanded = $false
+$script:expandedAt = [DateTime]::Now
+$script:autoCollapseMs = 5000
 
 function Set-DotColor([string]$hex) {
   $dot.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString($hex)
@@ -91,10 +96,21 @@ function Show-Card {
   $window.Left = $work.Right - $window.Width - 16
   $window.Top = $work.Bottom - $window.Height - 16
   $window.Visibility = 'Visible'
+  $script:expanded = $true
+  $script:expandedAt = [DateTime]::Now
+}
+
+function Collapse-Card {
+  $work = [System.Windows.SystemParameters]::WorkArea
+  $window.Left = $work.Right - 18
+  $window.Top = $work.Bottom - $window.Height - 16
+  $window.Visibility = 'Visible'
+  $script:expanded = $false
 }
 
 function Hide-Card {
   $window.Visibility = 'Collapsed'
+  $script:expanded = $false
 }
 
 function Dismiss-Card {
@@ -117,11 +133,25 @@ function Update-FromStatus {
 
   $mode = $status.mode
   $session = $status.sessionText
+  $shouldExpand = $false
 
-  # Idle resets the dismissal so the next turn/request always shows again.
+  # A new state (new turn, permission request, completion) re-expands the card.
+  if ($mode -ne $script:lastMode -or $session -ne $script:lastSession) {
+    if ($mode -ne 'idle') {
+      $script:dismissed = $false
+      $shouldExpand = $true
+    }
+    if ($mode -eq 'pending') {
+      try { [System.Media.SystemSounds]::Exclamation.Play() } catch { }
+    } elseif ($mode -eq 'done') {
+      try { [System.Media.SystemSounds]::Asterisk.Play() } catch { }
+    }
+    $script:lastMode = $mode
+    $script:lastSession = $session
+  }
+
+  # Idle always resets dismissal and hides.
   if ($mode -eq 'idle') {
-    $script:dismissed = $false
-  } elseif ($script:dismissed -and ($mode -ne $script:dismissedMode -or $session -ne $script:dismissedSessionText)) {
     $script:dismissed = $false
   }
 
@@ -144,15 +174,6 @@ function Update-FromStatus {
     }
   }
 
-  if ($mode -ne $script:lastMode) {
-    if ($mode -eq 'pending') {
-      try { [System.Media.SystemSounds]::Exclamation.Play() } catch { }
-    } elseif ($mode -eq 'done') {
-      try { [System.Media.SystemSounds]::Asterisk.Play() } catch { }
-    }
-    $script:lastMode = $mode
-  }
-
   if ($mode -eq 'running' -or $mode -eq 'pending') {
     $script:tick += 1
     $dot.Opacity = if ($script:tick % 2 -eq 0) { 0.35 } else { 1 }
@@ -162,8 +183,12 @@ function Update-FromStatus {
 
   if ($mode -eq 'idle' -or $script:dismissed) {
     Hide-Card
-  } else {
+  } elseif ($mode -eq 'pending' -or $mode -eq 'done') {
     Show-Card
+  } elseif ($mode -eq 'running') {
+    if ($shouldExpand -or $window.Visibility -ne 'Visible') {
+      Show-Card
+    }
   }
 }
 
@@ -193,12 +218,29 @@ $timer = [System.Windows.Threading.DispatcherTimer]::new()
 $timer.Interval = [TimeSpan]::FromMilliseconds(1000)
 $timer.Add_Tick({
   Read-Status
+
+  # Auto-collapse only while the AI is thinking; permission requests and
+  # completion stay expanded until the state changes.
+  if ($script:expanded -and $script:lastStatus -and $script:lastStatus.mode -eq 'running' -and -not $script:dismissed) {
+    $span = [DateTime]::Now - $script:expandedAt
+    if ($span.TotalMilliseconds -ge $script:autoCollapseMs) {
+      Collapse-Card
+      Write-DebugLog "auto collapsed"
+    }
+  }
 })
 $timer.Start()
 
 $closeButton.Add_Click({
   Write-DebugLog "dismiss clicked"
   Dismiss-Card
+})
+
+# Hovering or clicking the exposed edge expands the collapsed card.
+$window.Add_MouseEnter({
+  if (-not $script:expanded -and -not $script:dismissed -and $script:lastStatus -and $script:lastStatus.mode -ne 'idle') {
+    Show-Card
+  }
 })
 
 $window.Add_Closed({
