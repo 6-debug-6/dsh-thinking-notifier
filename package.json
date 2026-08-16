@@ -1,0 +1,51 @@
+{
+  "name": "dsh-thinking-notifier",
+  "version": "1.2.0",
+  "type": "module",
+  "description": "DeepSeek Harness desktop popup plugin: shows AI thinking status in a bottom-right always-on-top card, alerts on permission requests and completion, with a DeepSeek-style UI",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "desktop-popup.ps1",
+    "desktop-popup.py",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "license": "MIT",
+  "author": "dsh-thinking-notifier contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/dsh-thinking-notifier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/dsh-thinking-notifier/issues"
+  },
+  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/dsh-thinking-notifier#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "thinking",
+    "notifier",
+    "desktop-popup",
+    "permission",
+    "deepseek"
+  ]
+}

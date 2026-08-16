@@ -1,0 +1,8 @@
+# dsh-thinking-notifier 持久挂载通道（dsh.bundle.patch）
+#
+# 安装后，dsh plugin add 会把本包写入 profile 的 dsh.profile.bundles，
+# 重启后由本行挂载。客户端半边（lib/client.js）会由 client-modules 扫描
+# 并注入 window.__DSH_BOOT__，在浏览器中显示右下角思考状态悬浮窗。
+- insert:
+    - id: dsh-thinking-notifier
+      name: 'dsh-thinking-notifier'
