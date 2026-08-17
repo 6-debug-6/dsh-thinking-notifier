@@ -3,6 +3,19 @@ param(
   [int]$Port = 7389
 )
 
+# Single-instance guard: only one popup per port should run at a time.
+$mutexCreated = $false
+$mutex = $null
+try {
+  $mutex = New-Object System.Threading.Mutex($true, "Local\dsh-thinking-notifier-$Port", [ref]$mutexCreated)
+} catch {
+  $mutex = $null
+}
+if ($mutex -eq $null -or -not $mutexCreated) {
+  if ($mutex) { try { $mutex.Dispose() } catch { } }
+  exit
+}
+
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -102,7 +115,7 @@ function Show-Card {
 
 function Collapse-Card {
   $work = [System.Windows.SystemParameters]::WorkArea
-  $window.Left = $work.Right - 18
+  $window.Left = $work.Right - 25
   $window.Top = $work.Bottom - $window.Height - 16
   $window.Visibility = 'Visible'
   $script:expanded = $false
@@ -245,6 +258,8 @@ $window.Add_MouseEnter({
 
 $window.Add_Closed({
   $timer.Stop()
+  try { $mutex.ReleaseMutex() } catch { }
+  try { $mutex.Dispose() } catch { }
   [System.Windows.Threading.Dispatcher]::CurrentDispatcher.InvokeShutdown()
 })
 

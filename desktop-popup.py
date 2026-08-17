@@ -4,7 +4,9 @@
 Polls the host-side status endpoint and renders the same bottom-right card
 on macOS / Linux / Windows when PowerShell+WPF is not used.
 """
+import atexit
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -23,6 +25,46 @@ if '--port' in sys.argv:
         pass
 
 URL = f'http://127.0.0.1:{PORT}/status'
+
+# ---- Single-instance guard (file lock + PID check) ----
+LOCK_DIR = os.path.join(os.path.expanduser('~'), '.dsh')
+LOCK_PATH = os.path.join(LOCK_DIR, f'tn-popup-{PORT}.lock')
+
+
+def _is_pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
+if os.path.exists(LOCK_PATH):
+    try:
+        with open(LOCK_PATH, 'r', encoding='utf-8') as f:
+            old_pid = int(f.read().strip())
+        if _is_pid_alive(old_pid):
+            print(f'dsh-thinking-notifier: another popup instance is running (pid={old_pid}), exiting', file=sys.stderr)
+            sys.exit(0)
+    except Exception:
+        pass
+
+os.makedirs(LOCK_DIR, exist_ok=True)
+with open(LOCK_PATH, 'w', encoding='utf-8') as f:
+    f.write(str(os.getpid()))
+
+
+def _remove_lock():
+    try:
+        if os.path.exists(LOCK_PATH):
+            with open(LOCK_PATH, 'r', encoding='utf-8') as f:
+                if f.read().strip() == str(os.getpid()):
+                    os.remove(LOCK_PATH)
+    except Exception:
+        pass
+
+
+atexit.register(_remove_lock)
 
 # DeepSeek-style palette
 BG = '#1E2235'
@@ -97,7 +139,7 @@ def collapse_card():
     root.attributes('-topmost', True)
     w = 372
     h = 84
-    x = root.winfo_screenwidth() - 18
+    x = root.winfo_screenwidth() - 25
     y = max(16, root.winfo_screenheight() - h - 48)
     root.geometry(f'{w}x{h}+{x}+{y}')
     state['expanded'] = False

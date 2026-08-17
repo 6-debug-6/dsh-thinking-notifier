@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
-- Auto-collapse: while the AI is thinking, the popup shows fully for 5 seconds, then collapses into a slim right-edge tab (about 18 px wide) so it does not block desktop controls.
+- Auto-collapse: while the AI is thinking, the popup shows fully for 5 seconds, then collapses into a slim right-edge tab (25 px wide) so it does not block desktop controls.
 - Manual expand: hover or click the edge tab to expand the popup again.
 - Automatic expand on new states: new turns, permission requests, and completions expand the popup automatically.
 
